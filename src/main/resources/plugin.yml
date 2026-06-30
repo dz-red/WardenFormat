@@ -1,0 +1,14 @@
+name: WardenFormat
+version: 1.0
+main: dev.wardenformat.WardenFormat
+api-version: '1.20'
+description: Format item names via & codes in anvil
+author: warden
+
+commands:
+  itemformat:
+    description: Информация о форматировании предметов
+    usage: /itemformat info
+  lore:
+    description: Редактирование описания предмета в руке
+    usage: /lore <add|set|remove|clear> [аргументы]
