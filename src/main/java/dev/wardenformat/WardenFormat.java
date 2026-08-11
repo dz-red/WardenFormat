@@ -1,8 +1,6 @@
 package dev.wardenformat;
 
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import org.bukkit.ChatColor;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -23,9 +21,10 @@ import java.util.List;
 
 public class WardenFormat extends JavaPlugin implements Listener, CommandExecutor, TabCompleter {
 
-    private static final LegacyComponentSerializer SERIALIZER =
-            LegacyComponentSerializer.legacyAmpersand();
     private NamespacedKey formatKey;
+
+    // & -> § (legacy). Заменяет Adventure LegacyComponentSerializer на Spigot-нативное.
+    private static String c(String s) { return ChatColor.translateAlternateColorCodes('&', s); }
 
     @Override
     public void onEnable() {
@@ -84,87 +83,86 @@ public class WardenFormat extends JavaPlugin implements Listener, CommandExecuto
         };
 
         for (String line : lines) {
-            sender.sendMessage(SERIALIZER.deserialize(line));
+            sender.sendMessage(c(line));
         }
         return true;
     }
 
     private boolean handleLore(Player p, String[] args) {
         if (args.length == 0) {
-            p.sendMessage(SERIALIZER.deserialize("&eИспользование:"));
-            p.sendMessage(SERIALIZER.deserialize("&7/lore add <текст> &8— добавить строку"));
-            p.sendMessage(SERIALIZER.deserialize("&7/lore set <номер> <текст> &8— заменить строку"));
-            p.sendMessage(SERIALIZER.deserialize("&7/lore remove <номер> &8— удалить строку"));
-            p.sendMessage(SERIALIZER.deserialize("&7/lore clear &8— очистить описание"));
+            p.sendMessage(c("&eИспользование:"));
+            p.sendMessage(c("&7/lore add <текст> &8— добавить строку"));
+            p.sendMessage(c("&7/lore set <номер> <текст> &8— заменить строку"));
+            p.sendMessage(c("&7/lore remove <номер> &8— удалить строку"));
+            p.sendMessage(c("&7/lore clear &8— очистить описание"));
             return true;
         }
 
         ItemStack item = p.getInventory().getItemInMainHand();
         if (item.getType().isAir()) {
-            p.sendMessage(SERIALIZER.deserialize("&cВозьми предмет в руку."));
+            p.sendMessage(c("&cВозьми предмет в руку."));
             return true;
         }
 
         ItemMeta meta = item.getItemMeta();
-        List<Component> lore = meta.hasLore() ? new ArrayList<>(meta.lore()) : new ArrayList<>();
+        List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
 
         switch (args[0].toLowerCase()) {
             case "add" -> {
                 if (args.length < 2) {
-                    p.sendMessage(SERIALIZER.deserialize("&cИспользование: /lore add \"текст\""));
+                    p.sendMessage(c("&cИспользование: /lore add \"текст\""));
                     return true;
                 }
                 String raw = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
                 if (!raw.startsWith("\"") || !raw.endsWith("\"") || raw.length() < 2) {
-                    p.sendMessage(SERIALIZER.deserialize("&cТекст должен быть в кавычках: /lore add \"текст\""));
+                    p.sendMessage(c("&cТекст должен быть в кавычках: /lore add \"текст\""));
                     return true;
                 }
                 String text = raw.substring(1, raw.length() - 1);
                 lore.add(loreLine(text));
-                p.sendMessage(SERIALIZER.deserialize("&aДобавлена строка &7" + lore.size() + "&a."));
+                p.sendMessage(c("&aДобавлена строка &7" + lore.size() + "&a."));
             }
             case "set" -> {
-                if (args.length < 3) { p.sendMessage(SERIALIZER.deserialize("&cУкажи номер и текст.")); return true; }
+                if (args.length < 3) { p.sendMessage(c("&cУкажи номер и текст.")); return true; }
                 int idx = parseIndex(args[1], lore.size(), p);
                 if (idx < 0) return true;
                 String text = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
                 lore.set(idx, loreLine(text));
-                p.sendMessage(SERIALIZER.deserialize("&aСтрока &7" + (idx + 1) + "&a обновлена."));
+                p.sendMessage(c("&aСтрока &7" + (idx + 1) + "&a обновлена."));
             }
             case "remove" -> {
-                if (args.length < 2) { p.sendMessage(SERIALIZER.deserialize("&cУкажи номер строки.")); return true; }
+                if (args.length < 2) { p.sendMessage(c("&cУкажи номер строки.")); return true; }
                 int idx = parseIndex(args[1], lore.size(), p);
                 if (idx < 0) return true;
                 lore.remove(idx);
-                p.sendMessage(SERIALIZER.deserialize("&aСтрока &7" + (idx + 1) + "&a удалена."));
+                p.sendMessage(c("&aСтрока &7" + (idx + 1) + "&a удалена."));
             }
             case "clear" -> {
                 lore.clear();
-                p.sendMessage(SERIALIZER.deserialize("&aОписание очищено."));
+                p.sendMessage(c("&aОписание очищено."));
             }
             default -> { return false; }
         }
 
-        meta.lore(lore);
+        meta.setLore(lore);
         item.setItemMeta(meta);
         return true;
     }
 
-    private Component loreLine(String text) {
-        return SERIALIZER.deserialize(text)
-                .decoration(TextDecoration.ITALIC, false);
+    private String loreLine(String text) {
+        return c(text);
     }
 
     private int parseIndex(String arg, int size, Player p) {
         try {
             int n = Integer.parseInt(arg);
             if (n < 1 || n > size) {
-                p.sendMessage(SERIALIZER.deserialize("&cНомер строки от 1 до " + size + "."));
+                p.sendMessage(c("&cНомер строки от 1 до " + size + "."));
                 return -1;
             }
             return n - 1;
         } catch (NumberFormatException e) {
-            p.sendMessage(SERIALIZER.deserialize("&cНомер строки должен быть числом."));
+            p.sendMessage(c("&cНомер строки должен быть числом."));
             return -1;
         }
     }
@@ -189,7 +187,7 @@ public class WardenFormat extends JavaPlugin implements Listener, CommandExecuto
             String saved = input.getItemMeta().getPersistentDataContainer()
                     .get(formatKey, PersistentDataType.STRING);
             if (saved != null && e.getView().getPlayer() instanceof Player player) {
-                player.sendMessage(SERIALIZER.deserialize("&8[&7Текущий формат: &r" + saved + "&8]"));
+                player.sendMessage(c("&8[&7Текущий формат: &r" + saved + "&8]"));
             }
         }
 
@@ -209,12 +207,11 @@ public class WardenFormat extends JavaPlugin implements Listener, CommandExecuto
 
         if (!text.contains("&")) return;
 
-        Component name = SERIALIZER.deserialize(text)
-                .decoration(TextDecoration.ITALIC, false);
+        String name = c(text);
 
         ItemMeta meta = result.getItemMeta();
         if (meta == null) return;
-        meta.displayName(name);
+        meta.setDisplayName(name);
         meta.getPersistentDataContainer().set(formatKey, PersistentDataType.STRING, text);
         result.setItemMeta(meta);
         e.setResult(result);
